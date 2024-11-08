@@ -1,0 +1,151 @@
+using System;
+using System.Threading;
+
+namespace ConsoleSubwaySurfer
+{
+    class Program
+    {
+        static int playerPosition = 1;       // 0 = left, 1 = middle, 2 = right
+        static int score = 0;                // Player's score
+        static bool gameRunning = true;      // Game status
+        static int laneWidth = 5;            // Width of each lane in console characters
+        static int[] obstaclePositions = new int[3]; // Array to hold obstacle positions for each lane
+
+        static void Main(string[] args)
+        {
+            Console.CursorVisible = false;
+            Console.Clear();
+            InitializeGame();
+
+            // Start the game loop in a separate thread
+            Thread gameThread = new Thread(GameLoop);
+            gameThread.Start();
+
+            // Listen for player input
+            while (gameRunning)
+            {
+                if (Console.KeyAvailable)
+                {
+                    ConsoleKeyInfo key = Console.ReadKey(true);
+                    if (key.Key == ConsoleKey.LeftArrow && playerPosition > 0)
+                    {
+                        playerPosition--; // Move left
+                    }
+                    else if (key.Key == ConsoleKey.RightArrow && playerPosition < 2)
+                    {
+                        playerPosition++; // Move right
+                    }
+                }
+            }
+        }
+
+        // Initialize the game display and setup
+        static void InitializeGame()
+        {
+            Console.SetCursorPosition(0, 0);
+            Console.Write("Score: 0");
+
+            // Draw lane boundaries
+            for (int i = 1; i < Console.WindowHeight; i++)
+            {
+                Console.SetCursorPosition(laneWidth, i);
+                Console.Write("|"); // Left lane boundary
+                Console.SetCursorPosition(laneWidth * 2, i);
+                Console.Write("|"); // Right lane boundary
+            }
+        }
+
+        // Main game loop to update obstacles and score
+        static void GameLoop()
+        {
+            Random random = new Random();
+
+            while (gameRunning)
+            {
+                // Move obstacles down and check for collision
+                UpdateObstacles();
+
+                // Check for collision with the player
+                if (obstaclePositions[playerPosition] == Console.WindowHeight - 2)
+                {
+                    gameRunning = false;
+                    Console.Clear();
+                    Console.WriteLine("Game Over! You hit an obstacle.");
+                    Console.WriteLine($"Your score: {score}");
+                    return;
+                }
+
+                // Add a new obstacle in a random lane
+                if (random.Next(0, 5) == 0)  // Random chance for obstacle appearance
+                {
+                    int lane = random.Next(0, 3);
+                    if (obstaclePositions[lane] == 0) // Only place if no obstacle is in the lane
+                    {
+                        obstaclePositions[lane] = 1; // Place obstacle at the top of the screen
+                    }
+                }
+
+                // Update the score
+                score++;
+                UpdateScore();
+
+                // Redraw player in current lane
+                DrawPlayer();
+
+                Thread.Sleep(150); // Game speed, decrease to make it faster
+            }
+        }
+
+        // Update score display at the top
+        static void UpdateScore()
+        {
+            Console.SetCursorPosition(7, 0);  // Position to display the score
+            Console.Write(score);
+        }
+
+        // Move all obstacles down by one row
+        static void UpdateObstacles()
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                if (obstaclePositions[i] >= 1)
+                {
+                    // Erase obstacle at previous position
+                    Console.SetCursorPosition(i * laneWidth + laneWidth / 2, obstaclePositions[i]);
+                    Console.Write(" ");
+
+                    // Move obstacle down
+                    obstaclePositions[i]++;
+
+                    // Redraw obstacle at new position
+                    if (obstaclePositions[i] < Console.WindowHeight - 1)
+                    {
+                        Console.SetCursorPosition(i * laneWidth + laneWidth / 2, obstaclePositions[i]);
+                        Console.Write("X"); // Obstacle symbol
+                    }
+                    else
+                    {
+                        // Clear obstacle if it moves off the screen
+                        obstaclePositions[i] = 0;
+                    }
+                }
+            }
+        }
+
+        // Draw the player in their current lane
+        static void DrawPlayer()
+        {
+            // Clear previous player position
+            Console.SetCursorPosition(0 * laneWidth + laneWidth / 2, Console.WindowHeight - 2);
+            Console.Write(" ");
+            Console.SetCursorPosition(1 * laneWidth + laneWidth / 2, Console.WindowHeight - 2);
+            Console.Write(" ");
+            Console.SetCursorPosition(2 * laneWidth + laneWidth / 2, Console.WindowHeight - 2);
+            Console.Write(" ");
+
+            // Draw player in current lane
+            Console.SetCursorPosition(playerPosition * laneWidth + laneWidth / 2, Console.WindowHeight - 2);
+            Console.Write("O");  // Player symbol
+        }
+    }
+}
